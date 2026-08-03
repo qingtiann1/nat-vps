@@ -193,8 +193,7 @@ export CF_Token="$CF_TOKEN"
 ~/.acme.sh/acme.sh --issue --dns dns_cf -d "$DOMAIN" 2>&1 | tail -3
 ~/.acme.sh/acme.sh --install-cert -d "$DOMAIN" \
     --key-file /usr/local/etc/xray/certs/private.key \
-    --fullchain-file /usr/local/etc/xray/certs/fullchain.crt 
-    --reloadcmd "(systemctl restart xray sub-server 2>/dev/null; rc-service xray restart 2>/dev/null; rc-service sub-server restart 2>/dev/null)" 2>&1 | tail -1
+    --fullchain-file /usr/local/etc/xray/certs/fullchain.crt \n    --reloadcmd "(systemctl restart xray sub-server 2>/dev/null; rc-service xray restart 2>/dev/null; rc-service sub-server restart 2>/dev/null)" 2>&1 | tail -1
 echo "[*] 证书安装完成（ZeroSSL 90天有效，acme.sh cron自动续期+重启服务）"
 WS_LINK="vless://${UUID_WS}@${DOMAIN}:${WS_PORT}?encryption=none&security=tls&sni=${DOMAIN}&type=ws&path=${WS_PATH}#$(echo $DOMAIN | cut -d. -f1)-ws-tls"
 
