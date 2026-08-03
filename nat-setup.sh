@@ -187,18 +187,15 @@ XEOF
 #--- 申请 TLS 证书 ---
 echo "[*] 申请 TLS 证书..."
 if [ ! -f /root/.acme.sh/acme.sh ]; then
-    curl -sL --connect-timeout 10 https://get.acme.sh | sh -s email=admin@${DOMAIN#*.} >/dev/null 2>&1 || \
     curl -sL --connect-timeout 10 https://raw.githubusercontent.com/acmesh-official/acme.sh/master/acme.sh | sh -s email=admin@${DOMAIN#*.} >/dev/null 2>&1
 fi
 export CF_Token="$CF_TOKEN"
 ~/.acme.sh/acme.sh --issue --dns dns_cf -d "$DOMAIN" 2>&1 | tail -3
 ~/.acme.sh/acme.sh --install-cert -d "$DOMAIN" \
     --key-file /usr/local/etc/xray/certs/private.key \
-    --fullchain-file /usr/local/etc/xray/certs/fullchain.crt 2>&1 | tail -1
-echo "[*] 证书安装完成"
-
-#--- 生成分享链接 ---
-REALITY_LINK="vless://${UUID_REALITY}@${DOMAIN}:${REALITY_PORT}?encryption=none&flow=xtls-rprx-vision&security=reality&sni=${FALLBACK_DOMAIN}&fp=chrome&pbk=${PUBKEY}&sid=${SHORT_ID}&type=tcp#$(echo $DOMAIN | cut -d. -f1)-reality"
+    --fullchain-file /usr/local/etc/xray/certs/fullchain.crt 
+    --reloadcmd "(systemctl restart xray sub-server 2>/dev/null; rc-service xray restart 2>/dev/null; rc-service sub-server restart 2>/dev/null)" 2>&1 | tail -1
+echo "[*] 证书安装完成（ZeroSSL 90天有效，acme.sh cron自动续期+重启服务）"
 WS_LINK="vless://${UUID_WS}@${DOMAIN}:${WS_PORT}?encryption=none&security=tls&sni=${DOMAIN}&type=ws&path=${WS_PATH}#$(echo $DOMAIN | cut -d. -f1)-ws-tls"
 
 echo "$REALITY_LINK" > /usr/local/etc/xray/reality_link.txt
