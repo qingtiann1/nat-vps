@@ -195,6 +195,7 @@ export CF_Token="$CF_TOKEN"
     --key-file /usr/local/etc/xray/certs/private.key \
     --fullchain-file /usr/local/etc/xray/certs/fullchain.crt \n    --reloadcmd "(systemctl restart xray sub-server 2>/dev/null; rc-service xray restart 2>/dev/null; rc-service sub-server restart 2>/dev/null)" 2>&1 | tail -1
 echo "[*] 证书安装完成（ZeroSSL 90天有效，acme.sh cron自动续期+重启服务）"
+REALITY_LINK="vless://${UUID_REALITY}@${DOMAIN}:${REALITY_PORT}?encryption=none&flow=xtls-rprx-vision&security=reality&sni=${FALLBACK_DOMAIN}&fp=chrome&pbk=${PUBKEY}&sid=${SHORT_ID}&type=tcp#$(echo $DOMAIN | cut -d. -f1)-reality"
 WS_LINK="vless://${UUID_WS}@${DOMAIN}:${WS_PORT}?encryption=none&security=tls&sni=${DOMAIN}&type=ws&path=${WS_PATH}#$(echo $DOMAIN | cut -d. -f1)-ws-tls"
 
 echo "$REALITY_LINK" > /usr/local/etc/xray/reality_link.txt
