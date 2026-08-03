@@ -49,9 +49,10 @@ fi
 #--- 安装 Xray ---
 if [ ! -f /usr/local/bin/xray ]; then
     echo "[*] 下载 Xray..."
-    TAG=$(curl -sL "https://api.github.com/repos/XTLS/Xray-core/releases/latest" | grep -o '"tag_name": *"[^"]*"' | head -1 | sed 's/"tag_name": *"//;s/"//')
-    [ -z "$TAG" ] && TAG="v26.3.27"  # fallback
-    curl -sL -o /tmp/xray.zip "https://github.com/XTLS/Xray-core/releases/download/${TAG}/Xray-linux-64.zip"
+    TAG=$(curl -sL --connect-timeout 10 --max-time 30 "https://api.github.com/repos/XTLS/Xray-core/releases/latest" 2>/dev/null | grep -o '"tag_name": *"[^"]*"' | head -1 | sed 's/"tag_name": *"//;s/"//')
+    [ -z "$TAG" ] && TAG="v26.3.27"  # fallback（GitHub API 不通时用）
+    echo "  版本: $TAG"
+    curl -sL --connect-timeout 10 --max-time 120 -o /tmp/xray.zip "https://github.com/XTLS/Xray-core/releases/download/${TAG}/Xray-linux-64.zip"
     cd /tmp && unzip -q -o xray.zip
     cp xray /usr/local/bin/xray
     chmod +x /usr/local/bin/xray
