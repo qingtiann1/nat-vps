@@ -49,32 +49,55 @@ fi
 #--- 安装 Xray ---
 if [ ! -f /usr/local/bin/xray ]; then
     echo "[*] 下载 Xray..."
-    # 固定版本，避免 API 不通时卡死
     XRAY_VER="v26.3.27"
-    XRAY_URLS=(
-        "https://github.com/XTLS/Xray-core/releases/download/${XRAY_VER}/Xray-linux-64.zip"
-        "https://ghproxy.net/https://github.com/XTLS/Xray-core/releases/download/${XRAY_VER}/Xray-linux-64.zip"
-        "https://mirror.ghproxy.com/https://github.com/XTLS/Xray-core/releases/download/${XRAY_VER}/Xray-linux-64.zip"
-    )
-    for url in "${XRAY_URLS[@]}"; do
+    DOWNLOAD_OK=false
+    for url in \
+        "https://github.com/XTLS/Xray-core/releases/download/${XRAY_VER}/Xray-linux-64.zip" \
+        "https://ghproxy.net/https://github.com/XTLS/Xray-core/releases/download/${XRAY_VER}/Xray-linux-64.zip" \
+        "https://gh-proxy.com/https://github.com/XTLS/Xray-core/releases/download/${XRAY_VER}/Xray-linux-64.zip" \
+        "https://mirror.ghproxy.com/https://github.com/XTLS/Xray-core/releases/download/${XRAY_VER}/Xray-linux-64.zip" \
+        "https://download.fastgit.org/XTLS/Xray-core/releases/download/${XRAY_VER}/Xray-linux-64.zip"; do
         echo "  尝试: $url"
-        curl -sL --connect-timeout 10 --max-time 60 -o /tmp/xray.zip "$url" && break
+        rm -f /tmp/xray.zip
+        curl -sL --connect-timeout 10 --max-time 120 -o /tmp/xray.zip "$url" || continue
+        # 验证：真正的xray.zip约21MB，小于1MB的肯定是假文件
+        SIZE=$(stat -c%s /tmp/xray.zip 2>/dev/null || stat -f%z /tmp/xray.zip 2>/dev/null || echo 0)
+        if [ "$SIZE" -gt 1000000 ]; then
+            DOWNLOAD_OK=true
+            break
+        else
+            echo "  文件太小($SIZE bytes)，跳过"
+        fi
     done
+    if [ "$DOWNLOAD_OK" = false ]; then
+        echo "[!] Xray 下载失败，请手动上传 xray 到 /usr/local/bin/xray"
+        exit 1
+    fi
     cd /tmp && unzip -q -o xray.zip
     cp xray /usr/local/bin/xray
     chmod +x /usr/local/bin/xray
 
-    # 下载 geo 数据（多镜像）
+    # 下载 geo 数据（多镜像+大小验证）
     mkdir -p /usr/local/share/xray
     for url in \
         "https://github.com/v2fly/geoip/releases/latest/download/geoip.dat" \
-        "https://ghproxy.net/https://github.com/v2fly/geoip/releases/latest/download/geoip.dat"; do
-        curl -sL --connect-timeout 10 --max-time 60 -o /usr/local/share/xray/geoip.dat "$url" && break
+        "https://ghproxy.net/https://github.com/v2fly/geoip/releases/latest/download/geoip.dat" \
+        "https://gh-proxy.com/https://github.com/v2fly/geoip/releases/latest/download/geoip.dat"; do
+        rm -f /usr/local/share/xray/geoip.dat
+        curl -sL --connect-timeout 10 --max-time 120 -o /usr/local/share/xray/geoip.dat "$url" || continue
+        SIZE=$(stat -c%s /usr/local/share/xray/geoip.dat 2>/dev/null || echo 0)
+        [ "$SIZE" -gt 1000000 ] && break
+        echo "  geoip 太小($SIZE)，重试..."
     done
     for url in \
         "https://github.com/v2fly/domain-list-community/releases/latest/download/dlc.dat" \
-        "https://ghproxy.net/https://github.com/v2fly/domain-list-community/releases/latest/download/dlc.dat"; do
-        curl -sL --connect-timeout 10 --max-time 60 -o /tmp/dlc.dat "$url" && break
+        "https://ghproxy.net/https://github.com/v2fly/domain-list-community/releases/latest/download/dlc.dat" \
+        "https://gh-proxy.com/https://github.com/v2fly/domain-list-community/releases/latest/download/dlc.dat"; do
+        rm -f /tmp/dlc.dat
+        curl -sL --connect-timeout 10 --max-time 120 -o /tmp/dlc.dat "$url" || continue
+        SIZE=$(stat -c%s /tmp/dlc.dat 2>/dev/null || echo 0)
+        [ "$SIZE" -gt 500000 ] && break
+        echo "  dlc 太小($SIZE)，重试..."
     done
     [ -f /tmp/dlc.dat ] && mv /tmp/dlc.dat /usr/local/share/xray/geosite.dat
     echo "[*] Xray $(/usr/local/bin/xray version 2>&1 | head -1)"
