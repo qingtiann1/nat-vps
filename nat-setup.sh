@@ -49,19 +49,34 @@ fi
 #--- 安装 Xray ---
 if [ ! -f /usr/local/bin/xray ]; then
     echo "[*] 下载 Xray..."
-    TAG=$(curl -sL --connect-timeout 10 --max-time 30 "https://api.github.com/repos/XTLS/Xray-core/releases/latest" 2>/dev/null | grep -o '"tag_name": *"[^"]*"' | head -1 | sed 's/"tag_name": *"//;s/"//')
-    [ -z "$TAG" ] && TAG="v26.3.27"  # fallback（GitHub API 不通时用）
-    echo "  版本: $TAG"
-    curl -sL --connect-timeout 10 --max-time 120 -o /tmp/xray.zip "https://github.com/XTLS/Xray-core/releases/download/${TAG}/Xray-linux-64.zip"
+    # 固定版本，避免 API 不通时卡死
+    XRAY_VER="v26.3.27"
+    XRAY_URLS=(
+        "https://github.com/XTLS/Xray-core/releases/download/${XRAY_VER}/Xray-linux-64.zip"
+        "https://ghproxy.net/https://github.com/XTLS/Xray-core/releases/download/${XRAY_VER}/Xray-linux-64.zip"
+        "https://mirror.ghproxy.com/https://github.com/XTLS/Xray-core/releases/download/${XRAY_VER}/Xray-linux-64.zip"
+    )
+    for url in "${XRAY_URLS[@]}"; do
+        echo "  尝试: $url"
+        curl -sL --connect-timeout 10 --max-time 60 -o /tmp/xray.zip "$url" && break
+    done
     cd /tmp && unzip -q -o xray.zip
     cp xray /usr/local/bin/xray
     chmod +x /usr/local/bin/xray
 
-    # 下载 geo 数据
+    # 下载 geo 数据（多镜像）
     mkdir -p /usr/local/share/xray
-    curl -sL -o /usr/local/share/xray/geoip.dat "https://github.com/v2fly/geoip/releases/latest/download/geoip.dat"
-    curl -sL -o /usr/local/share/xray/geosite.dat "https://github.com/v2fly/domain-list-community/releases/latest/download/dlc.dat"
-    [ -f /usr/local/share/xray/dlc.dat ] && mv /usr/local/share/xray/dlc.dat /usr/local/share/xray/geosite.dat
+    for url in \
+        "https://github.com/v2fly/geoip/releases/latest/download/geoip.dat" \
+        "https://ghproxy.net/https://github.com/v2fly/geoip/releases/latest/download/geoip.dat"; do
+        curl -sL --connect-timeout 10 --max-time 60 -o /usr/local/share/xray/geoip.dat "$url" && break
+    done
+    for url in \
+        "https://github.com/v2fly/domain-list-community/releases/latest/download/dlc.dat" \
+        "https://ghproxy.net/https://github.com/v2fly/domain-list-community/releases/latest/download/dlc.dat"; do
+        curl -sL --connect-timeout 10 --max-time 60 -o /tmp/dlc.dat "$url" && break
+    done
+    [ -f /tmp/dlc.dat ] && mv /tmp/dlc.dat /usr/local/share/xray/geosite.dat
     echo "[*] Xray $(/usr/local/bin/xray version 2>&1 | head -1)"
 else
     echo "[*] Xray 已安装"
@@ -149,7 +164,8 @@ XEOF
 #--- 申请 TLS 证书 ---
 echo "[*] 申请 TLS 证书..."
 if [ ! -f /root/.acme.sh/acme.sh ]; then
-    curl -sL https://get.acme.sh | sh -s email=admin@${DOMAIN#*.} >/dev/null 2>&1
+    curl -sL --connect-timeout 10 https://get.acme.sh | sh -s email=admin@${DOMAIN#*.} >/dev/null 2>&1 || \
+    curl -sL --connect-timeout 10 https://raw.githubusercontent.com/acmesh-official/acme.sh/master/acme.sh | sh -s email=admin@${DOMAIN#*.} >/dev/null 2>&1
 fi
 export CF_Token="$CF_TOKEN"
 ~/.acme.sh/acme.sh --issue --dns dns_cf -d "$DOMAIN" 2>&1 | tail -3
